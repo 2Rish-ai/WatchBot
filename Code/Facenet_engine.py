@@ -38,9 +38,3 @@ def save_embeddings(user_id, person_name, file_paths):
     db.commit()
     cur.close()
     db.close()
-# test
-# open Detect.py
-
-def detect_faces(user_id):
-    import Detect
-    Detect.run_live_detection(user_id)

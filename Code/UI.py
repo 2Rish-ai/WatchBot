@@ -8,6 +8,7 @@ import Facenet_engine as fn
 from PIL import Image, ImageTk
 import Detect as dt
 import threading
+import cv2
 
 def connect_to_db():
     try:
@@ -183,11 +184,23 @@ class Home_Page():
         button_row = tk.Frame(self.master)
         button_row.pack(pady=20)
 
-        tk.Button(button_row, text="Live Camera", height=6,width=20 , command=lambda: threading.Thread(target=fn.detect_faces(self.user_id), daemon=True).start()).pack(side="left",padx=10)
+        # tk.Button(button_row, text="Live Camera", height=6,width=20 , command=lambda: threading.Thread(target=fn.detect_faces(self.user_id), daemon=True).start()).pack(side="left",padx=10)
+        tk.Button(button_row, text="Live Camera", height=6,width=20 , command=self.open_live_feed).pack(side="left",padx=10)
         tk.Button(button_row, text="Database", height=6, width=20,command=self.open_database_window).pack(side="right", padx=10)
 
         tk.Button(self.master, text="Upload Image",height=3,width=45, command=self.open_upload_image).pack(pady=20)
     
+    def open_live_feed(self):
+        self.master.withdraw()
+        self.open_live_feed_window = tk.Toplevel(self.root)
+
+        def on_close():
+            self.live_feed.stop()
+
+
+        self.open_live_feed_window.protocol("WM_DELETE_WINDOW", on_close)
+        self.live_feed = Live_Feed(self.open_live_feed_window, self.root, self.master, self.user_id)
+
     
     def open_upload_image(self):
         self.master.withdraw()
@@ -245,20 +258,78 @@ class Home_Page():
 
         load_data()
 
-
-    def remove_p(self):
-        Remove_Person()
-
     def logout(self):
         self.root.deiconify()
         self.master.destroy()
 
-class Remove_Person():
-    def __init__(self,root,master):
+
+class Live_Feed():
+    def __init__(self,master,root,previous_window,user_id):
         self.root = root
         self.master = master
+        self.user_id = user_id
+        self.previous_window = previous_window
+        self.master.title("Live Feed")
+        self.master.geometry("900x530")
 
-        
+        top_section = tk.Frame(self.master)
+        top_section.pack(fill="both", expand=True)
+
+        self.video_frame = tk.Frame(top_section)
+        self.video_frame.pack(side="left", padx=10, pady=10)
+
+        self.text_frame = tk.Frame(top_section)
+        self.text_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+        result = dt.setup_detection(self.user_id)
+        if result is not None:
+            self.known_faces, self.mtcnn, self.facenet = result
+
+        self.video_label = tk.Label(self.video_frame)
+        self.video_label.pack()
+
+        tk.Label(self.text_frame, text="Known", font=("Helvetica", 16, "bold"), fg="green").pack(pady=(10,5))
+        self.known_label = tk.Label(self.text_frame, text="—", font=("Helvetica", 14), fg="green", justify="center")
+        self.known_label.pack()
+
+        tk.Label(self.text_frame, text="Unknown", font=("Helvetica", 16, "bold"), fg="red").pack(pady=(20,5))
+        self.unknown_label = tk.Label(self.text_frame, text="—", font=("Helvetica", 14), fg="red", justify="center")
+        self.unknown_label.pack()
+
+        self.cap = cv2.VideoCapture(0)
+        self.update_frame()
+
+        tk.Button(self.master, text="Close Camera", height=3, width=45, command=self.stop).pack(pady=10)
+
+    def update_frame(self):
+        ret, frame = self.cap.read()
+        if ret:
+            frame, names = dt.process_frame(frame, self.mtcnn, self.facenet, self.known_faces)
+
+            # convert for tkinter, keep aspect ratio
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            pil_img = Image.fromarray(rgb)
+            pil_img = pil_img.resize((480, int(480 * pil_img.height / pil_img.width)), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(pil_img)
+
+            # update video
+            self.video_label.configure(image=photo)
+            self.video_label.image = photo
+
+            # update text
+            known = [n["name"] for n in names if n["known"]]
+            unknown_count = sum(1 for n in names if not n["known"])
+
+            self.known_label.configure(text="\n".join(known) if known else "—")
+            self.unknown_label.configure(text=f"{unknown_count} unknown face(s)" if unknown_count > 0 else "—")
+
+        self.master.after(30, self.update_frame)
+
+    def stop(self):
+        self.cap.release()
+        self.previous_window.deiconify()
+        self.master.destroy()
+
 
 class Upload_Image():
     def __init__(self,master,root,previous_window,username,user_id):
