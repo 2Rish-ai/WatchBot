@@ -4,8 +4,9 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 import database
 import numpy as np
 from tkinter import messagebox
+from torch.nn.functional import cosine_similarity
 
-threshold = 0.85
+threshold = 0.75
 
 def run_live_detection(user_id):
     db = database.connect_to_db()
@@ -34,43 +35,50 @@ def run_live_detection(user_id):
             break
 
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img_tensor = mtcnn(img)
+        boxes,_ = mtcnn.detect(img)
 
-        if img_tensor is not None:
-            boxes,_ = mtcnn.detect(img)
+        if boxes is not None:
+            for box in boxes:
+                x1,y1,x2,y2 = [int(b) for b in box]
 
-            with torch.no_grad():
-                live_embedding = facenet(img_tensor.unsqueeze(0))[0]
-                
-            best_distance = float("inf")
-            best_name = "Unknown"
+                # Extract face region for this specific box
+                face_img = img[y1:y2, x1:x2]
 
-            for name, db_embedding in known_faces:
-                db_embedding = torch.tensor(db_embedding)
-                distance = torch.norm(live_embedding - db_embedding).item()
+                # Get embedding for this specific face
+                face_tensor = mtcnn(face_img)
 
-                if distance < best_distance:
-                    best_distance = distance
-                    best_name = name
-            
-            if best_distance < threshold:
-                label = f"{best_name} {best_distance:.2f}"
-            else:
-                label = "Unknown"
+                if face_tensor is not None:
+                    with torch.no_grad():
+                        live_embedding = facenet(face_tensor.unsqueeze(0))[0]
 
-            if boxes is not None:
-                for box in boxes:
-                    x1,y1,x2,y2 = [int(b) for b in box]
-                    cv2.rectangle(frame,(x1,y1),(x2,y2),(0,255,0),2)
-                    cv2.putText(
-                        frame,
-                        label,
-                        (x1,y1-10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.8,
-                        (0,255,0),
-                        2
-                    )
+                    best_distance = float("-inf")
+                    best_name = "Unknown"
+
+                    for name, db_embedding in known_faces:
+                        db_embedding = torch.tensor(db_embedding)
+                        distance = torch.cosine_similarity(live_embedding.unsqueeze(0), db_embedding.unsqueeze(0)).item()
+
+                        if distance > best_distance:
+                            best_distance = distance
+                            best_name = name
+
+                    if best_distance > threshold:
+                        label = f"{best_name} {best_distance:.2f}"
+                    else:
+                        label = "Unknown"
+                else:
+                    label = "Unknown"
+
+                cv2.rectangle(frame,(x1,y1),(x2,y2),(0,255,0),2)
+                cv2.putText(
+                    frame,
+                    label,
+                    (x1,y1-10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (0,255,0),
+                    2
+                )
                 
 
         cv2.imshow("Live Feed", frame)

@@ -4,7 +4,15 @@
       "Bash(git config:*)",
       "Bash(git push:*)",
       "Bash(git remote set-url:*)",
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(if [ ! -f ~/.ssh/id_ed25519 ])",
+      "Bash(then)",
+      "Bash(ssh-keygen:*)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(ssh-copy-id:*)",
+      "Bash(ssh-keyscan:*)",
+      "Bash(~/.ssh/known_hosts)"
     ]
   }
 }
