@@ -38,7 +38,7 @@ def save_embeddings(user_id, person_name, file_paths):
     db.commit()
     cur.close()
     db.close()
-
+# test
 
 def detect_faces(user_id):
     import Detect
