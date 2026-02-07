@@ -10,10 +10,10 @@ threshold = 0.75
 def setup_detection(user_id):
     db = database.connect_to_db()
     cur = db.cursor()
+
     cur.execute(
-        "SELECT person_name, embedding FROM embedding_table WHERE user_id = %s",
-        (user_id,),
-    )
+        "SELECT person_name,embedding FROM embedding_table WHERE user_id = %s",
+        (user_id,))
     known_faces = cur.fetchall()
 
     cur.close()
