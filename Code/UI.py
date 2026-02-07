@@ -15,7 +15,7 @@ def connect_to_db():
         return psycopg2.connect(
             host="localhost",
             database="WatchBot",
-            user="postgres",
+            user="piuser",
             password="onepiece!1"
         )
     except psycopg2.Error as err:
@@ -167,7 +167,7 @@ class Home_Page():
         self.username = self.username.title()
         self.user_id = user_id
 
-        img = Image.open("/Users/rishiprajapati/Desktop/Projects/WATCHBot/Code/logout.jpg")
+        img = Image.open("/home/prajapati/Desktop/NEA/Code/Code/logout.jpg")
         img = img.resize((30, 30), Image.Resampling.LANCZOS)
         self.logout_icon = ImageTk.PhotoImage(img)
 
@@ -341,7 +341,7 @@ class Upload_Image():
         self.username = username
         self.user_id = user_id
 
-        img = Image.open("/Users/rishiprajapati/Desktop/Projects/WATCHBot/Code/back.png")
+        img = Image.open("/home/prajapati/Desktop/NEA/Code/Code/back.png")
         img = img.resize((30, 30), Image.Resampling.LANCZOS)
         self.logout_icon = ImageTk.PhotoImage(img)
 
