@@ -585,6 +585,8 @@ def main():
         home_page_window = tk.Toplevel(root)
         
         def on_close():
+            username_entry.delete(0, tk.END)
+            password_entry.delete(0, tk.END)
             root.deiconify()
             home_page_window.destroy()
 
