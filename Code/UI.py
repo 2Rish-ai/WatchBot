@@ -9,13 +9,14 @@ from PIL import Image, ImageTk
 import Detect as dt
 import threading
 import cv2
+import time
 
 def connect_to_db():
     try:
         return psycopg2.connect(
             host="localhost",
             database="WatchBot",
-            user="piuser",
+            user="postgres",
             password="onepiece!1"
         )
     except psycopg2.Error as err:
@@ -167,7 +168,7 @@ class Home_Page():
         self.username = self.username.title()
         self.user_id = user_id
 
-        img = Image.open("/home/prajapati/Desktop/NEA/Code/Code/logout.jpg")
+        img = Image.open("/Users/rishiprajapati/Desktop/Projects/WATCHBot/Code/logout.jpg")
         img = img.resize((30, 30), Image.Resampling.LANCZOS)
         self.logout_icon = ImageTk.PhotoImage(img)
 
@@ -214,53 +215,158 @@ class Home_Page():
         Upload_Image(self.open_upload_image_window,self.root,self.master,self.username,self.user_id)
 
     def open_database_window(self):
-        db_window = tk.Toplevel(self.master)
-        db_window.title("Database")
-        db_window.geometry("600x400")
-        
-        tree = ttk.Treeview(db_window, columns=("Name", "Num Images", "User ID"), show="headings")
-        tree.heading("Name", text="Person Name")
-        tree.heading("Num Images", text="Number of Images")
-        tree.heading("User ID", text="User ID")
-        tree.pack(fill="both", expand=True)
+        self.master.withdraw()
+        db_menu_window = tk.Toplevel(self.root)
 
-        def load_data():
-            for i in tree.get_children():
-                tree.delete(i)
-            db = connect_to_db()
-            cur = db.cursor()
-            cur.execute("SELECT person_name, COUNT(*), user_id FROM embedding_table GROUP BY person_name, user_id")
-            rows = cur.fetchall()
-            for row in rows:
-                tree.insert("", tk.END, values=row)
-            cur.close()
-            db.close()
+        def on_close():
+            self.master.deiconify()
+            db_menu_window.destroy()
 
-        def remove_person():
-            selected = tree.selection()
-            if not selected:
-                messagebox.showwarning("Warning", "Please select a person to remove")
-                return
-            person_name = tree.item(selected[0])['values'][0]
-
-            db = connect_to_db()
-            cur = db.cursor()
-            cur.execute("DELETE FROM embedding_table WHERE person_name=%s AND user_id=%s", (person_name, self.user_id))
-            db.commit()
-            cur.close()
-            db.close()
-            messagebox.showinfo("Success", f"All data for '{person_name}' removed")
-            load_data()  # refresh table
-
-        # Buttons
-        tk.Button(db_window, text="Remove Selected Person", command=remove_person).pack(pady=5)
-        tk.Button(db_window, text="Refresh", command=load_data).pack(pady=5)
-
-        load_data()
+        db_menu_window.protocol("WM_DELETE_WINDOW", on_close)
+        Database_Menu(db_menu_window, self.root, self.master, self.user_id)
 
     def logout(self):
         self.root.deiconify()
         self.master.destroy()
+
+
+class Database_Menu():
+    def __init__(self, master, root, previous_window, user_id):
+        self.master = master
+        self.root = root
+        self.previous_window = previous_window
+        self.user_id = user_id
+        self.master.title("Database")
+        self.master.geometry("500x500")
+
+        tk.Label(master, text="Database", font=('Helvetica', 18, 'bold')).pack(pady=30)
+
+        button_row = tk.Frame(master)
+        button_row.pack(pady=20)
+
+        tk.Button(button_row, text="Historical Data", height=6, width=20, command=self.open_historical_data).pack(side="left", padx=10)
+        tk.Button(button_row, text="Manage Faces", height=6, width=20, command=self.open_database_view).pack(side="right", padx=10)
+        tk.Button(self.master, text="Back",height=3,width=45, command=self.back).pack(pady=20)
+
+    def open_historical_data(self):
+        self.master.withdraw()
+        historical_data_view_window = tk.Toplevel(self.root)
+
+        def on_close():
+            self.master.deiconify()
+            historical_data_view_window.destroy()
+
+        historical_data_view_window.protocol("WM_DELETE_WINDOW", on_close)
+        Historical_Data(historical_data_view_window, self.root, self.master, self.user_id)
+
+    def open_database_view(self):
+        self.master.withdraw()
+        db_view_window = tk.Toplevel(self.root)
+
+        def on_close():
+            self.master.deiconify()
+            db_view_window.destroy()
+
+        db_view_window.protocol("WM_DELETE_WINDOW", on_close)
+        Database_View(db_view_window, self.root, self.master, self.user_id)
+
+    def back(self):
+        self.previous_window.deiconify()
+        self.master.destroy()
+    
+class Historical_Data():
+    def __init__(self,master,root,previous_window,user_id):
+        self.master = master
+        self.root = root
+        self.previous_window = previous_window
+        self.user_id = user_id
+        self.master.title("Historical Data")
+        self.master.geometry("700x400")
+
+        tree = ttk.Treeview(master, columns=("Person", "Known", "Confidence", "Time"), show="headings")
+        tree.heading("Person", text="Person Name")
+        tree.heading("Known", text="Known")
+        tree.heading("Confidence", text="Confidence")
+        tree.heading("Time", text="Detected At")
+        tree.column("Person", width=150)
+        tree.column("Known", width=80)
+        tree.column("Confidence", width=100)
+        tree.column("Time", width=200)
+        tree.pack(fill="both", expand=True)
+        self.tree = tree
+
+        tk.Button(master, text="Refresh", command=self.load_data).pack(pady=5)
+
+        self.load_data()
+
+    def load_data(self):
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        db = connect_to_db()
+        cur = db.cursor()
+        cur.execute(
+            "SELECT person_name, is_known, confidence_score, detected_at FROM detection_history WHERE user_id=%s ORDER BY detected_at DESC",
+            (self.user_id,)
+        )
+        rows = cur.fetchall()
+        for row in rows:
+            person_name, is_known, confidence, detected_at = row
+            known_text = "Yes" if is_known else "No"
+            confidence_text = f"{confidence:.2f}" if confidence else "—"
+            time_text = detected_at.strftime("%Y-%m-%d %H:%M:%S")
+            self.tree.insert("", tk.END, values=(person_name, known_text, confidence_text, time_text))
+        cur.close()
+        db.close()
+
+
+class Database_View():
+    def __init__(self, master, root, previous_window, user_id):
+        self.master = master
+        self.root = root
+        self.previous_window = previous_window
+        self.user_id = user_id
+        self.master.title("Manage Faces")
+        self.master.geometry("600x400")
+
+        tree = ttk.Treeview(master, columns=("Name", "Num Images", "User ID"), show="headings")
+        tree.heading("Name", text="Person Name")
+        tree.heading("Num Images", text="Number of Images")
+        tree.heading("User ID", text="User ID")
+        tree.pack(fill="both", expand=True)
+        self.tree = tree
+
+        tk.Button(master, text="Remove Selected Person", command=self.remove_person).pack(pady=5)
+        tk.Button(master, text="Refresh", command=self.load_data).pack(pady=5)
+
+        self.load_data()
+
+    def load_data(self):
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        db = connect_to_db()
+        cur = db.cursor()
+        cur.execute("SELECT person_name, COUNT(*), user_id FROM embedding_table GROUP BY person_name, user_id")
+        rows = cur.fetchall()
+        for row in rows:
+            self.tree.insert("", tk.END, values=row)
+        cur.close()
+        db.close()
+
+    def remove_person(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Warning", "Please select a person to remove")
+            return
+        person_name = self.tree.item(selected[0])['values'][0]
+
+        db = connect_to_db()
+        cur = db.cursor()
+        cur.execute("DELETE FROM embedding_table WHERE person_name=%s AND user_id=%s", (person_name, self.user_id))
+        db.commit()
+        cur.close()
+        db.close()
+        messagebox.showinfo("Success", f"All data for '{person_name}' removed")
+        self.load_data()
 
 
 class Live_Feed():
@@ -296,6 +402,7 @@ class Live_Feed():
         self.unknown_label = tk.Label(self.text_frame, text="—", font=("Helvetica", 14), fg="red", justify="center")
         self.unknown_label.pack()
 
+        self.logged_recently = {}
         self.cap = cv2.VideoCapture(0)
         self.update_frame()
 
@@ -323,7 +430,30 @@ class Live_Feed():
             self.known_label.configure(text="\n".join(known) if known else "—")
             self.unknown_label.configure(text=f"{unknown_count} unknown face(s)" if unknown_count > 0 else "—")
 
+            self.log_detections(names)
+
         self.master.after(30, self.update_frame)
+
+    def log_detections(self, names):
+        now = time.time()
+        for face in names:
+            person_name = face["person_name"]
+            last_logged = self.logged_recently.get(person_name, 0)
+            if now - last_logged < 30:
+                continue
+            self.logged_recently[person_name] = now
+            try:
+                db = connect_to_db()
+                cur = db.cursor()
+                cur.execute(
+                    "INSERT INTO detection_history (user_id, person_name, is_known, confidence_score) VALUES (%s, %s, %s, %s)",
+                    (self.user_id, person_name, face["known"], face["confidence"])
+                )
+                db.commit()
+                cur.close()
+                db.close()
+            except Exception as e:
+                print(f"Detection log error: {e}")
 
     def stop(self):
         self.cap.release()
@@ -341,7 +471,7 @@ class Upload_Image():
         self.username = username
         self.user_id = user_id
 
-        img = Image.open("/home/prajapati/Desktop/NEA/Code/Code/back.png")
+        img = Image.open("/Users/rishiprajapati/Desktop/Projects/WATCHBot/Code/back.png")
         img = img.resize((30, 30), Image.Resampling.LANCZOS)
         self.logout_icon = ImageTk.PhotoImage(img)
 

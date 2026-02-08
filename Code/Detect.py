@@ -92,6 +92,9 @@ def process_frame(frame, mtcnn, facenet, known_faces):
                 2
             )
 
-            detected_names.append({"name": label, "known": is_known})
+            if is_known:
+                detected_names.append({"name": label, "known": True, "person_name": best_name, "confidence": best_distance})
+            else:
+                detected_names.append({"name": label, "known": False, "person_name": "Unknown", "confidence": 0.0})
 
     return frame, detected_names
