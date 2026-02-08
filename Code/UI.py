@@ -159,9 +159,10 @@ class New_Account():
             
 
 class Home_Page():
-    def __init__(self,master,root,username,user_id):
+    def __init__(self,master,root,username,user_id,on_logout=None):
         self.master = master
         self.root = root
+        self.on_logout = on_logout
         self.master.title("Home Page")
         self.master.geometry("500x500")
         self.username = username.get()
@@ -226,8 +227,11 @@ class Home_Page():
         Database_Menu(db_menu_window, self.root, self.master, self.user_id)
 
     def logout(self):
-        self.root.deiconify()
-        self.master.destroy()
+        if self.on_logout:
+            self.on_logout()
+        else:
+            self.root.deiconify()
+            self.master.destroy()
 
 
 class Database_Menu():
@@ -591,7 +595,7 @@ def main():
             home_page_window.destroy()
 
         home_page_window.protocol("WM_DELETE_WINDOW", on_close)
-        Home_Page(home_page_window,root,username_entry,user_id)
+        Home_Page(home_page_window,root,username_entry,user_id,on_close)
 
     def confirm_credentials():
         root.withdraw()
