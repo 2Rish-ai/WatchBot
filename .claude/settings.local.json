@@ -12,7 +12,13 @@
       "Bash(fi)",
       "Bash(ssh-copy-id:*)",
       "Bash(ssh-keyscan:*)",
-      "Bash(~/.ssh/known_hosts)"
+      "Bash(~/.ssh/known_hosts)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(PGPASSWORD='onepiece!1' psql:*)",
+      "Bash(python3:*)"
     ]
   }
 }

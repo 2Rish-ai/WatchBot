@@ -300,27 +300,38 @@ class Historical_Data():
         self.tree = tree
 
         tk.Button(master, text="Refresh", command=self.load_data).pack(pady=5)
+        tk.Button(master, text="Delete History", command=self.delete_history).pack(pady=5)
 
         self.load_data()
 
     def load_data(self):
         for i in self.tree.get_children():
             self.tree.delete(i)
-        db = connect_to_db()
-        cur = db.cursor()
-        cur.execute(
+        self.db = connect_to_db()
+        self.cur = self.db.cursor()
+        self.cur.execute(
             "SELECT person_name, is_known, confidence_score, detected_at FROM detection_history WHERE user_id=%s ORDER BY detected_at DESC",
             (self.user_id,)
         )
-        rows = cur.fetchall()
+        rows = self.cur.fetchall()
         for row in rows:
             person_name, is_known, confidence, detected_at = row
             known_text = "Yes" if is_known else "No"
             confidence_text = f"{confidence:.2f}" if confidence else "—"
             time_text = detected_at.strftime("%Y-%m-%d %H:%M:%S")
             self.tree.insert("", tk.END, values=(person_name, known_text, confidence_text, time_text))
+        self.cur.close()
+        self.db.close()
+    
+    def delete_history(self):
+        db = connect_to_db()
+        cur = db.cursor()
+        cur.execute("DELETE FROM detection_history WHERE user_id=%s", (self.user_id,))
+        db.commit()
         cur.close()
         db.close()
+        messagebox.showinfo("Success", "History cleared")
+        self.load_data()
 
 
 class Database_View():
