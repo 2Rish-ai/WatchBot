@@ -177,7 +177,7 @@ class Home_Page():
         top_bar.pack(fill="x")
         top_bar.pack_propagate(False)
 
-        user_label = tk.Label(top_bar , text=f"Hello {self.username}!", fg="white",bg="#b1b1b1",font=("Comic Sans MS", 20,"bold"))
+        user_label = tk.Label(top_bar , text=f"Hello {self.username} !", fg="white",bg="#b1b1b1",font=("Comic Sans MS", 20,"bold"))
         user_label.pack(side="left",padx=15)
 
         logout_btn = tk.Button(top_bar,image=self.logout_icon,command=self.logout,relief="flat")
@@ -301,6 +301,7 @@ class Historical_Data():
 
         tk.Button(master, text="Refresh", command=self.load_data).pack(pady=5)
         tk.Button(master, text="Delete History", command=self.delete_history).pack(pady=5)
+        tk.Button(master, text="Back" , command=self.back).pack(pady=5)
 
         self.load_data()
 
@@ -333,6 +334,10 @@ class Historical_Data():
         messagebox.showinfo("Success", "History cleared")
         self.load_data()
 
+    def back(self):
+        self.previous_window.deiconify()
+        self.master.destroy()
+
 
 class Database_View():
     def __init__(self, master, root, previous_window, user_id):
@@ -352,6 +357,7 @@ class Database_View():
 
         tk.Button(master, text="Remove Selected Person", command=self.remove_person).pack(pady=5)
         tk.Button(master, text="Refresh", command=self.load_data).pack(pady=5)
+        tk.Button(master, text="Back" , command=self.back).pack(pady=5)
 
         self.load_data()
 
@@ -383,6 +389,9 @@ class Database_View():
         messagebox.showinfo("Success", f"All data for '{person_name}' removed")
         self.load_data()
 
+    def back(self):
+        self.previous_window.deiconify()
+        self.master.destroy()
 
 class Live_Feed():
     def __init__(self,master,root,previous_window,user_id):
@@ -405,6 +414,10 @@ class Live_Feed():
         result = dt.setup_detection(self.user_id)
         if result is not None:
             self.known_faces, self.mtcnn, self.facenet = result
+        else:
+            self.previous_window.deiconify()
+            self.master.destroy()
+            return
 
         self.video_label = tk.Label(self.video_frame)
         self.video_label.pack()
@@ -431,7 +444,7 @@ class Live_Feed():
             # convert for tkinter, keep aspect ratio
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(rgb)
-            pil_img = pil_img.resize((480, int(480 * pil_img.height / pil_img.width)), Image.Resampling.LANCZOS)
+            pil_img = pil_img.resize((550, int(550 * pil_img.height / pil_img.width)), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(pil_img)
 
             # update video
@@ -454,7 +467,7 @@ class Live_Feed():
         for face in names:
             person_name = face["person_name"]
             last_logged = self.logged_recently.get(person_name, 0)
-            if now - last_logged < 30:
+            if now - last_logged < 30:  # check if any new person arrives after 30 sec after detected then only continue
                 continue
             self.logged_recently[person_name] = now
             try:

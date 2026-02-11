@@ -19,12 +19,12 @@ def setup_detection(user_id):
     cur.close()
     db.close()
 
+    mtcnn = MTCNN(image_size=160)
+    facenet = InceptionResnetV1(pretrained="vggface2").eval()
+
     if not known_faces:
         messagebox.showerror("Error","No known faces for this user")
         return None
-
-    mtcnn = MTCNN(image_size=160)
-    facenet = InceptionResnetV1(pretrained="vggface2").eval()
 
     return known_faces, mtcnn, facenet
 
