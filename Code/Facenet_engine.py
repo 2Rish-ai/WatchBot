@@ -34,7 +34,8 @@ def save_embeddings(user_id, person_name, file_paths):
     avg_embedding = torch.stack(embeddings).mean(dim=0)
     embedding_list = avg_embedding.tolist()
 
-    # Add the average embedding to the database 
+    # Delete existing embedding for this person if it exists, then insert new one
+    cur.execute("DELETE FROM embedding_table WHERE user_id = %s AND person_name = %s", (user_id, person_name))
     cur.execute("""
             INSERT INTO embedding_table (user_id, person_name, embedding)
             VALUES (%s, %s, %s)

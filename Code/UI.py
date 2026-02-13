@@ -169,9 +169,15 @@ class Home_Page():
         self.username = self.username.title()
         self.user_id = user_id
 
-        img = Image.open("/Users/rishiprajapati/Desktop/Projects/WATCHBot/Code/logout.jpg")
-        img = img.resize((30, 30), Image.Resampling.LANCZOS)
-        self.logout_icon = ImageTk.PhotoImage(img)
+        logout_img = Image.open("/Users/rishiprajapati/Desktop/Projects/WATCHBot/Code/logout.jpg")
+        logout_img = logout_img.resize((30, 30), Image.Resampling.LANCZOS)
+        self.logout_icon = ImageTk.PhotoImage(logout_img)
+
+        account_img = Image.open("/Users/rishiprajapati/Desktop/Projects/WATCHBot/Code/account.jpg")
+        account_img = account_img.resize((30,30), Image.Resampling.LANCZOS)
+        self.account_icon = ImageTk.PhotoImage(account_img)
+
+
 
         top_bar = tk.Frame(self.master, bg="#b1b1b1", height=60)
         top_bar.pack(fill="x")
@@ -181,6 +187,8 @@ class Home_Page():
         user_label.pack(side="left",padx=15)
 
         logout_btn = tk.Button(top_bar,image=self.logout_icon,command=self.logout,relief="flat")
+        logout_btn.pack(side="right", padx=15)
+        logout_btn = tk.Button(top_bar,image=self.account_icon, command=self.Account, relief="flat")
         logout_btn.pack(side="right", padx=15)
 
         button_row = tk.Frame(self.master)
@@ -226,12 +234,45 @@ class Home_Page():
         db_menu_window.protocol("WM_DELETE_WINDOW", on_close)
         Database_Menu(db_menu_window, self.root, self.master, self.user_id)
 
+    def Account(self):
+        self.master.withdraw()
+        account_window = tk.Toplevel(self.root)
+
+        def on_close():
+            self.master.deiconify()
+            account_window.destroy()
+
+
+        account_window.protocol("WM_DELETE_WINDOW", on_close)
+        Account_Page(account_window,self.root,self.master,self.user_id)
+
+
     def logout(self):
         if self.on_logout:
             self.on_logout()
         else:
             self.root.deiconify()
             self.master.destroy()
+        
+
+class Account_Page():
+    def __init__(self, master, root, previous_window, user_id):
+        self.master = master
+        self.root = root
+        self.previous_window = previous_window
+        self.user_id = user_id
+        self.master.title("Account Page")
+        self.master.geometry("500x500")
+
+        tk.Label(self.master,text="Account Page", font=('Helvetica', 18, 'bold')).pack(pady=30)
+
+        tk.Button(self.master, text="Change Password",height=3,width=45).pack(pady=20)
+        tk.Button(self.master, text="Delete Account",height=3,width=45).pack(pady=20)
+        tk.Button(self.master, text="Back",height=3,width=45, command=self.back).pack(pady=20)
+
+    def back(self):
+        self.previous_window.deiconify()
+        self.master.destroy()
 
 
 class Database_Menu():
@@ -520,7 +561,7 @@ class Upload_Image():
         self.new_name.pack()
 
         tk.Button(self.master, text="Upload Image (Atleast 10 images for accuracy)", command=self.import_images).pack()
-        tk.Button(self.master, text="Submit", command=self.submit).pack(pady=20)
+        tk.Button(self.master, text="Submit",height=3,width=45, command=self.submit).pack(pady=20)
         
 
     def submit(self):

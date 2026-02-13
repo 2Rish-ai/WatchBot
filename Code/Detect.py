@@ -64,6 +64,8 @@ def process_frame(frame, mtcnn, facenet, known_faces):
                 best_name = "Unknown"
 
                 for name, db_embedding in known_faces:
+                    if isinstance(db_embedding, str):
+                        db_embedding = [float(x) for x in db_embedding.strip('{}[]').split(',')]
                     db_embedding = torch.tensor(db_embedding)
                     distance = torch.cosine_similarity(live_embedding.unsqueeze(0), db_embedding.unsqueeze(0)).item()
 
