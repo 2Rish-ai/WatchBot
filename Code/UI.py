@@ -183,7 +183,7 @@ class Home_Page():
         top_bar.pack(fill="x")
         top_bar.pack_propagate(False)
 
-        user_label = tk.Label(top_bar , text=f"Hello {self.username} !", fg="white",bg="#b1b1b1",font=("Comic Sans MS", 20,"bold"))
+        user_label = tk.Label(top_bar , text=f"Hello {self.username}!", fg="white",bg="#b1b1b1",font=("Comic Sans MS", 20,"bold"))
         user_label.pack(side="left",padx=15)
 
         logout_btn = tk.Button(top_bar,image=self.logout_icon,command=self.logout,relief="flat")
@@ -266,14 +266,235 @@ class Account_Page():
 
         tk.Label(self.master,text="Account Page", font=('Helvetica', 18, 'bold')).pack(pady=30)
 
-        tk.Button(self.master, text="Change Password",height=3,width=45).pack(pady=20)
-        tk.Button(self.master, text="Delete Account",height=3,width=45).pack(pady=20)
+        tk.Button(self.master, text="Change Password",height=3,width=45,command=self.change_password_option).pack(pady=20)
+        tk.Button(self.master, text="Delete Account",height=3,width=45,command=self.delete_account_option).pack(pady=20)
         tk.Button(self.master, text="Back",height=3,width=45, command=self.back).pack(pady=20)
+
+    def change_password_option(self):
+        self.master.withdraw()
+        change_password_window = tk.Toplevel(self.root)
+
+        def on_close():
+            self.master.deiconify()
+            change_password_window.destroy()
+
+
+        change_password_window.protocol("WM_DELETE_WINDOW", on_close)
+        Change_password(change_password_window,self.root,self.master,self.user_id)
+
+    def delete_account_option(self):
+        self.master.withdraw()
+        delete_account_window = tk.Toplevel(self.root)
+
+        def on_close():
+            self.master.deiconify()
+            delete_account_window.destroy()
+
+
+        delete_account_window.protocol("WM_DELETE_WINDOW", on_close)
+        Delete_Acccount(delete_account_window,self.root,self.master,self.user_id)
 
     def back(self):
         self.previous_window.deiconify()
         self.master.destroy()
 
+class Change_password():
+    def __init__(self,master,root,previous_window,user_id):
+        self.master = master
+        self.previous_window = previous_window
+        self.root = root
+        self.user_id = user_id
+        self.master.title("Change Password")
+        self.master.geometry("500x550")
+
+        tk.Label(self.master,text="Set New Password", font=('Helvetica', 18, 'bold')).pack(pady=10)
+
+        tk.Label(self.master,text="Enter old password").pack()
+        self.old_password = tk.Entry(self.master,show="*")
+        self.old_password.pack()
+
+        tk.Label(self.master,text="Enter new password").pack()
+
+        self.new_password  = tk.Entry(self.master,show="*")
+        self.new_password.pack()
+
+        tk.Label(self.master, text="To confirm enter the new password again").pack()
+
+        self.confirm_password_entry = tk.Entry(self.master,show="*")
+        self.confirm_password_entry.pack()
+
+        self.var = tk.IntVar()
+
+        checkbox = tk.Checkbutton(self.master,text="See Password", variable=self.var,onvalue=1,offvalue=0, command=self.on_click_check)
+        checkbox.pack()
+
+        tk.Button(self.master, text="Change Password",height=2,width=45,command=self.confirm_password).pack(pady=20)
+        tk.Button(self.master, text="Back",height=2,width=45, command=self.back).pack(pady=20)
+
+    def on_click_check(self):
+        if self.var.get() == 1:
+            self.old_password.configure(show="")
+            self.new_password.configure(show="")
+            self.confirm_password_entry.configure(show="")
+        else:
+            self.old_password.configure(show="*")
+            self.new_password.configure(show="*")
+            self.confirm_password_entry.configure(show="*")
+
+    def confirm_password(self):
+        old_pw = self.old_password.get()
+        new_pw = self.new_password.get()
+        confirm_pw = self.confirm_password_entry.get()
+
+        if not old_pw or not new_pw or not confirm_pw:
+            messagebox.showerror("Error", "All fields are required")
+            return
+        if new_pw != confirm_pw:
+            messagebox.showerror("Error", "New passwords do not match")
+            return
+
+        if self.check_old_password(old_pw):
+            self.change_password(new_pw)
+        else:
+            messagebox.showerror("Error", "Wrong Password entry for Old Password")
+
+    def change_password(self, new_pw):
+        db = connect_to_db()
+        if db is None:
+            messagebox.showerror("Error", "Database connection failed")
+            return
+        cur = db.cursor()
+        try:
+            password_byte = new_pw.encode("utf-8")
+            hashed = bcrypt.hashpw(password_byte, bcrypt.gensalt())
+            hashed_str = hashed.decode("utf-8")
+
+            cur.execute("UPDATE login_details SET hash_values = %s WHERE user_id = %s",
+                        (hashed_str, self.user_id))
+
+            db.commit()
+            messagebox.showinfo("Success", "Password changed successfully!")
+            self.previous_window.deiconify()
+            self.master.destroy()
+        except Exception as e:
+            messagebox.showerror("Database Error", str(e))
+        finally:
+            cur.close()
+            db.close()
+
+    def check_old_password(self, old_pw):
+        db = connect_to_db()
+        if db is None:
+            messagebox.showerror("Error", "Database connection failed")
+            return False
+        cur = db.cursor()
+        try:
+            cur.execute(
+                "SELECT hash_values FROM login_details WHERE user_id = %s",
+                (self.user_id,)
+            )
+
+            result = cur.fetchone()
+            if result is None:
+                return False
+
+            stored_hash = result[0]
+            return bcrypt.checkpw(old_pw.encode("utf-8"), stored_hash.encode("utf-8"))
+        finally:
+            cur.close()
+            db.close()
+
+    def back(self):
+        self.previous_window.deiconify()
+        self.master.destroy()
+
+class Delete_Acccount():
+    def __init__(self,master,root,previous_window,user_id):
+        self.master = master
+        self.previous_window = previous_window
+        self.root = root
+        self.user_id = user_id
+        self.master.title("Delete Account")
+        self.master.geometry("500x500")
+
+        tk.Label(master, text="Delete Account").pack(pady=10)
+
+        tk.Label(master, text="Please enter the password").pack()
+
+        self.enter_password = tk.Entry(self.master,show="*")
+        self.enter_password.pack()
+
+        self.var = tk.IntVar()
+
+        checkbox = tk.Checkbutton(self.master,text="See Password", variable=self.var,onvalue=1,offvalue=0, command=self.on_click_check)
+        checkbox.pack()
+
+        tk.Button(self.master,text="Delete Account",height=3,width=45, command=self.confirm_account).pack(pady=20)
+        tk.Button(self.master, text="Back",height=3,width=45, command=self.back).pack(pady=20)
+
+    def on_click_check(self):
+        if self.var.get() == 1:
+            self.enter_password.configure(show="")
+        else:
+            self.enter_password.configure(show="*")
+
+    def confirm_account(self):
+        password = self.enter_password.get()
+        if not password:
+            messagebox.showerror("Error", "Please enter your password")
+            return
+        if self.check_password(password):
+            confirm = messagebox.askyesno("Confirm", "Are you sure you want to delete your account? This cannot be undone.")
+            if confirm:
+                self.delete_account()
+        else:
+            messagebox.showerror("Error", "Wrong Password entry")
+
+    def delete_account(self):
+        db = connect_to_db()
+        if db is None:
+            messagebox.showerror("Error", "Database connection failed")
+            return
+        cur = db.cursor()
+        try:
+            cur.execute("DELETE FROM detection_history WHERE user_id = %s", (self.user_id,))
+            cur.execute("DELETE FROM embedding_table WHERE user_id = %s", (self.user_id,))
+            cur.execute("DELETE FROM login_details WHERE user_id = %s", (self.user_id,))
+            db.commit()
+            messagebox.showinfo("Success", "Account deleted successfully")
+            self.master.destroy()
+            self.root.deiconify()
+        except Exception as e:
+            messagebox.showerror("Database Error", str(e))
+        finally:
+            cur.close()
+            db.close()
+
+    def check_password(self, password):
+        db = connect_to_db()
+        if db is None:
+            messagebox.showerror("Error", "Database connection failed")
+            return False
+        cur = db.cursor()
+        try:
+            cur.execute(
+                "SELECT hash_values FROM login_details WHERE user_id = %s",
+                (self.user_id,)
+            )
+
+            result = cur.fetchone()
+            if result is None:
+                return False
+
+            stored_hash = result[0]
+            return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+        finally:
+            cur.close()
+            db.close()
+
+    def back(self):
+        self.previous_window.deiconify()
+        self.master.destroy()
 
 class Database_Menu():
     def __init__(self, master, root, previous_window, user_id):
@@ -441,7 +662,7 @@ class Live_Feed():
         self.user_id = user_id
         self.previous_window = previous_window
         self.master.title("Live Feed")
-        self.master.geometry("900x530")
+        self.master.geometry("900x600")
 
         top_section = tk.Frame(self.master)
         top_section.pack(fill="both", expand=True)
@@ -485,7 +706,7 @@ class Live_Feed():
             # convert for tkinter, keep aspect ratio
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(rgb)
-            pil_img = pil_img.resize((550, int(550 * pil_img.height / pil_img.width)), Image.Resampling.LANCZOS)
+            pil_img = pil_img.resize((600, int(600 * pil_img.height / pil_img.width)), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(pil_img)
 
             # update video
