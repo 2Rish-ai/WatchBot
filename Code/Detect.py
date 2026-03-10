@@ -5,7 +5,7 @@ import database
 import numpy as np
 from tkinter import messagebox
 
-threshold = 0.7
+threshold = 0.75
 
 def setup_detection(user_id):
     db = database.connect_to_db()

@@ -7,7 +7,6 @@ import bcrypt
 import Facenet_engine as fn
 from PIL import Image, ImageTk
 import Detect as dt
-import threading
 import cv2
 import time
 
@@ -183,7 +182,7 @@ class Home_Page():
         top_bar.pack(fill="x")
         top_bar.pack_propagate(False)
 
-        user_label = tk.Label(top_bar , text=f"Hello {self.username}!", fg="white",bg="#b1b1b1",font=("Comic Sans MS", 20,"bold"))
+        user_label = tk.Label(top_bar , text=f"Hello {self.username}", fg="white",bg="#b1b1b1",font=("Comic Sans MS", 20,"bold"))
         user_label.pack(side="left",padx=15)
 
         logout_btn = tk.Button(top_bar,image=self.logout_icon,command=self.logout,relief="flat")
@@ -194,7 +193,6 @@ class Home_Page():
         button_row = tk.Frame(self.master)
         button_row.pack(pady=20)
 
-        # tk.Button(button_row, text="Live Camera", height=6,width=20 , command=lambda: threading.Thread(target=fn.detect_faces(self.user_id), daemon=True).start()).pack(side="left",padx=10)
         tk.Button(button_row, text="Live Camera", height=6,width=20 , command=self.open_live_feed).pack(side="left",padx=10)
         tk.Button(button_row, text="Database", height=6, width=20,command=self.open_database_window).pack(side="right", padx=10)
 
@@ -244,7 +242,7 @@ class Home_Page():
 
 
         account_window.protocol("WM_DELETE_WINDOW", on_close)
-        Account_Page(account_window,self.root,self.master,self.user_id)
+        Account_Page(account_window,self.root,self.master,self.user_id, self.username)
 
 
     def logout(self):
@@ -256,13 +254,21 @@ class Home_Page():
         
 
 class Account_Page():
-    def __init__(self, master, root, previous_window, user_id):
+    def __init__(self, master, root, previous_window, user_id, username):
         self.master = master
         self.root = root
         self.previous_window = previous_window
         self.user_id = user_id
         self.master.title("Account Page")
         self.master.geometry("500x500")
+        self.username = username
+
+        top_bar = tk.Frame(self.master, bg="#b1b1b1", height=60)
+        top_bar.pack(fill="x")
+        top_bar.pack_propagate(False)
+
+        user_label = tk.Label(top_bar , text=f"Username: {self.username}", fg="white",bg="#b1b1b1",font=("Comic Sans MS", 20,"bold"))
+        user_label.pack(pady=10,padx=15)
 
         tk.Label(self.master,text="Account Page", font=('Helvetica', 18, 'bold')).pack(pady=30)
 
@@ -628,7 +634,8 @@ class Database_View():
             self.tree.delete(i)
         db = connect_to_db()
         cur = db.cursor()
-        cur.execute("SELECT person_name, COUNT(*), user_id FROM embedding_table GROUP BY person_name, user_id")
+        cur.execute("SELECT person_name, COUNT(*), user_id FROM embedding_table WHERE user_id = %s GROUP BY person_name, user_id",
+                    (self.user_id,))
         rows = cur.fetchall()
         for row in rows:
             self.tree.insert("", tk.END, values=row)
