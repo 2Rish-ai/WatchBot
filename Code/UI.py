@@ -10,6 +10,7 @@ import Detect as dt
 import cv2
 import time
 
+# H3: Connect to local PostgreSQL database — all data stored locally, no cloud services
 def connect_to_db():
     try:
         return psycopg2.connect(
@@ -22,6 +23,7 @@ def connect_to_db():
         print(f"Database connection error: {err}")
         return None
 
+# F3: Ethical Terms and Agreement confirmation displayed before new account creation
 class Confirmation():
     def __init__(self,master,root,agreed,cancel):
         self.master = master
@@ -80,6 +82,7 @@ If you do not agree, please click Cancel.
         
 
 
+# E1: Users create an account with a username and password through this form
 class New_Account():
     def __init__(self,master,root):
         self.master = master
@@ -98,13 +101,15 @@ class New_Account():
 
         self.var = tk.IntVar()
 
+        # E10: "See Password" checkbox to toggle password visibility
         checkbox = tk.Checkbutton(master,text="See Password", variable=self.var,onvalue=1,offvalue=0, command=self.on_click_check)
         checkbox.pack()
 
+        # E2: User must enter the password twice to confirm it matches before account creation
         tk.Label(master, text="Re-enter Password to confirm").pack()
         self.check_password = tk.Entry(master,show="*")
         self.check_password.pack()
-            
+
         tk.Button(master,text="Create New Account",command=self.submit).pack(pady=15)
 
     def on_click_check(self):
@@ -116,14 +121,15 @@ class New_Account():
                 self.check_password.configure(show="*")
 
     def submit(self):
-        
         username = self.new_username.get()
         password = self.new_password.get()
         check_password = self.check_password.get()
 
+        # E3: Validate that neither username nor password is empty
         if not username or not password:
             messagebox.showerror("Error", "Username and Password cannot be empty!")
             return
+        # E2: Verify both password entries match before proceeding
         elif password != check_password:
             messagebox.showerror("Error", "Passwords do not match")
             return
@@ -137,10 +143,12 @@ class New_Account():
             return
         cur = db.cursor()
         try:
+            # E4: Hash the password using bcrypt (bcrypt.hashpw with bcrypt.gensalt()) — no plaintext passwords are ever saved
             password_byte = password.encode("utf-8")
             hashed = bcrypt.hashpw(password_byte,bcrypt.gensalt())
             hashed_str = hashed.decode("utf-8")
 
+            # E5: Store hashed password in login_details table with auto-generated user_id primary key
             cur.execute("INSERT INTO login_details(username, hash_values) VALUES (%s, %s) RETURNING user_id",
                         (username, hashed_str))
 
@@ -157,6 +165,7 @@ class New_Account():
             db.close() 
             
 
+# F4: Home Page with user's name and buttons for Live Camera, Upload Images, Database, Account, Logout
 class Home_Page():
     def __init__(self,master,root,username,user_id,on_logout=None):
         self.master = master
@@ -198,10 +207,12 @@ class Home_Page():
 
         tk.Button(self.master, text="Upload Image",height=3,width=45, command=self.open_upload_image).pack(pady=20)
     
+    # F5: Each page opens as a Toplevel window, the previous window is hidden (withdraw)
     def open_live_feed(self):
         self.master.withdraw()
         self.open_live_feed_window = tk.Toplevel(self.root)
 
+        # F6: WM_DELETE_WINDOW protocol handler ensures proper navigation when user closes via OS close button
         def on_close():
             self.live_feed.stop()
 
@@ -304,6 +315,7 @@ class Account_Page():
         self.previous_window.deiconify()
         self.master.destroy()
 
+# E8: Allow users to change their password by entering the old password (verified via bcrypt) and the new password twice
 class Change_password():
     def __init__(self,master,root,previous_window,user_id):
         self.master = master
@@ -371,10 +383,12 @@ class Change_password():
             return
         cur = db.cursor()
         try:
+            # E4: Hash the new password using bcrypt before storing — no plaintext passwords saved
             password_byte = new_pw.encode("utf-8")
             hashed = bcrypt.hashpw(password_byte, bcrypt.gensalt())
             hashed_str = hashed.decode("utf-8")
 
+            # E8: Update the hashed password in login_details for this user
             cur.execute("UPDATE login_details SET hash_values = %s WHERE user_id = %s",
                         (hashed_str, self.user_id))
 
@@ -388,6 +402,7 @@ class Change_password():
             cur.close()
             db.close()
 
+    # E6: Retrieve stored hash and verify using bcrypt.checkpw — comparing entered password's hash against stored hash
     def check_old_password(self, old_pw):
         db = connect_to_db()
         if db is None:
@@ -405,6 +420,7 @@ class Change_password():
                 return False
 
             stored_hash = result[0]
+            # E6: bcrypt.checkpw compares the entered password's hash against the stored hash
             return bcrypt.checkpw(old_pw.encode("utf-8"), stored_hash.encode("utf-8"))
         finally:
             cur.close()
@@ -414,6 +430,7 @@ class Change_password():
         self.previous_window.deiconify()
         self.master.destroy()
 
+# E9: Allow users to delete their account — cascades deletion across detection_history, embedding_table, and login_details
 class Delete_Acccount():
     def __init__(self,master,root,previous_window,user_id):
         self.master = master
@@ -463,6 +480,7 @@ class Delete_Acccount():
             return
         cur = db.cursor()
         try:
+            # E9: Cascade deletion across detection_history, embedding_table, and login_details (in that order)
             cur.execute("DELETE FROM detection_history WHERE user_id = %s", (self.user_id,))
             cur.execute("DELETE FROM embedding_table WHERE user_id = %s", (self.user_id,))
             cur.execute("DELETE FROM login_details WHERE user_id = %s", (self.user_id,))
@@ -476,6 +494,7 @@ class Delete_Acccount():
             cur.close()
             db.close()
 
+    # E9: Verify password before allowing account deletion using bcrypt.checkpw
     def check_password(self, password):
         db = connect_to_db()
         if db is None:
@@ -502,6 +521,7 @@ class Delete_Acccount():
         self.previous_window.deiconify()
         self.master.destroy()
 
+# F4: Database menu with options for Historical Data and Manage Faces
 class Database_Menu():
     def __init__(self, master, root, previous_window, user_id):
         self.master = master
@@ -546,6 +566,7 @@ class Database_Menu():
         self.previous_window.deiconify()
         self.master.destroy()
     
+# D2: Display detection history in a Tkinter Treeview table
 class Historical_Data():
     def __init__(self,master,root,previous_window,user_id):
         self.master = master
@@ -555,6 +576,7 @@ class Historical_Data():
         self.master.title("Historical Data")
         self.master.geometry("700x400")
 
+        # D2: Treeview table with columns: Person Name, Known (Yes/No), Confidence, Detected At
         tree = ttk.Treeview(master, columns=("Person", "Known", "Confidence", "Time"), show="headings")
         tree.heading("Person", text="Person Name")
         tree.heading("Known", text="Known")
@@ -567,7 +589,9 @@ class Historical_Data():
         tree.pack(fill="both", expand=True)
         self.tree = tree
 
+        # D5: Refresh button to reload the latest data from the database
         tk.Button(master, text="Refresh", command=self.load_data).pack(pady=5)
+        # D6: Delete History button clears all detection history for the current user
         tk.Button(master, text="Delete History", command=self.delete_history).pack(pady=5)
         tk.Button(master, text="Back" , command=self.back).pack(pady=5)
 
@@ -578,6 +602,8 @@ class Historical_Data():
             self.tree.delete(i)
         self.db = connect_to_db()
         self.cur = self.db.cursor()
+        # D3: Sort historical data by detected_at DESC (most recent first)
+        # C5: Filter by user_id so each user can only see their own data
         self.cur.execute(
             "SELECT person_name, is_known, confidence_score, detected_at FROM detection_history WHERE user_id=%s ORDER BY detected_at DESC",
             (self.user_id,)
@@ -586,12 +612,14 @@ class Historical_Data():
         for row in rows:
             person_name, is_known, confidence, detected_at = row
             known_text = "Yes" if is_known else "No"
+            # D4: Format confidence score to 2 decimal places and timestamp as YYYY-MM-DD HH:MM:SS
             confidence_text = f"{confidence:.2f}" if confidence else "—"
             time_text = detected_at.strftime("%Y-%m-%d %H:%M:%S")
             self.tree.insert("", tk.END, values=(person_name, known_text, confidence_text, time_text))
         self.cur.close()
         self.db.close()
     
+    # D6: Delete all detection history for the current user and refresh the table
     def delete_history(self):
         db = connect_to_db()
         cur = db.cursor()
@@ -607,6 +635,7 @@ class Historical_Data():
         self.master.destroy()
 
 
+# C3: Manage Faces table showing each enrolled person's name, number of embeddings, and user ID
 class Database_View():
     def __init__(self, master, root, previous_window, user_id):
         self.master = master
@@ -634,6 +663,7 @@ class Database_View():
             self.tree.delete(i)
         db = connect_to_db()
         cur = db.cursor()
+        # C3/C5: Query embedding_table filtered by user_id — each user can only see their own enrolled faces
         cur.execute("SELECT person_name, COUNT(*), user_id FROM embedding_table WHERE user_id = %s GROUP BY person_name, user_id",
                     (self.user_id,))
         rows = cur.fetchall()
@@ -642,6 +672,7 @@ class Database_View():
         cur.close()
         db.close()
 
+    # C4: Remove a selected person from the facial recognition database, deleting their embedding from embedding_table
     def remove_person(self):
         selected = self.tree.selection()
         if not selected:
@@ -662,6 +693,7 @@ class Database_View():
         self.previous_window.deiconify()
         self.master.destroy()
 
+# A1: Live face recognition feed — captures video frames and runs real-time detection
 class Live_Feed():
     def __init__(self,master,root,previous_window,user_id):
         self.root = root
@@ -699,7 +731,9 @@ class Live_Feed():
         self.unknown_label = tk.Label(self.text_frame, text="—", font=("Helvetica", 14), fg="red", justify="center")
         self.unknown_label.pack()
 
+        # D1: Cooldown tracker — stores last log time per person to enforce 30-second cooldown window
         self.logged_recently = {}
+        # A1/G1: Capture live video using OpenCV's VideoCapture (adaptable to Picamera2 on Raspberry Pi)
         self.cap = cv2.VideoCapture(0)
         self.update_frame()
 
@@ -731,17 +765,20 @@ class Live_Feed():
 
         self.master.after(30, self.update_frame)
 
+    # C1: Store all detection events in detection_history table (user_id, person_name, is_known, confidence_score, detected_at)
     def log_detections(self, names):
         now = time.time()
         for face in names:
             person_name = face["person_name"]
             last_logged = self.logged_recently.get(person_name, 0)
-            if now - last_logged < 30:  # check if any new person arrives after 30 sec after detected then only continue
+            # D1: 30-second cooldown window per person — if the same person was logged within 30 seconds, skip the insert
+            if now - last_logged < 30:
                 continue
             self.logged_recently[person_name] = now
             try:
                 db = connect_to_db()
                 cur = db.cursor()
+                # C1: Insert detection record with user_id, person_name, is_known boolean, and confidence_score
                 cur.execute(
                     "INSERT INTO detection_history (user_id, person_name, is_known, confidence_score) VALUES (%s, %s, %s, %s)",
                     (self.user_id, person_name, face["known"], face["confidence"])
@@ -758,6 +795,7 @@ class Live_Feed():
         self.master.destroy()
 
 
+# B1: Upload Image system — allows users to upload multiple images of a new person for face enrolment
 class Upload_Image():
     def __init__(self,master,root,previous_window,username,user_id):
         self.master = master
@@ -792,6 +830,7 @@ class Upload_Image():
         tk.Button(self.master, text="Submit",height=3,width=45, command=self.submit).pack(pady=20)
         
 
+    # B3: Require the user to enter the person's name and upload images before submission
     def submit(self):
         if not self.file_paths:
             messagebox.showerror("Error", "Please upload images first")
@@ -799,7 +838,8 @@ class Upload_Image():
         if not self.new_name.get():
             messagebox.showerror("Error","Please enter a message")
             return
-        
+
+        # B6-B9: Calls FaceNet engine to generate embeddings, compute the mean, and store in PostgreSQL
         fn.save_embeddings(
             self.user_id,
             self.new_name.get(),
@@ -808,6 +848,7 @@ class Upload_Image():
 
         messagebox.showinfo("Success", "Face data saved successfully")
 
+    # B1/B2: File dialog allows multiple image selection, accepting only .jpg or .png format
     def import_images(self):
         self.file_paths = []
         self.file_name = filedialog.askopenfilenames(title="Select at least 1 image (you can hold CMD/CTRL to select multiple)",filetypes=[("Image Files","*.jpg *.png")])
@@ -822,30 +863,34 @@ class Upload_Image():
 
 
     
+# E6: Login authentication — retrieve stored hash for the entered username and verify using bcrypt.checkpw
 def check_password(username,password):
-        
         db = connect_to_db()
         if db is None:
             messagebox.showerror("Error", "Database connection failed")
             return
         cur = db.cursor()
 
+        # E6: Retrieve user_id and stored hash from login_details for the entered username
         cur.execute(
             "SELECT user_id, hash_values FROM login_details WHERE username = %s",
             (username,)
         )
 
+        # E7: Return None if username does not exist — triggers "Invalid Username or Password" error
         result = cur.fetchone()
         if result is None:
             return None
 
         user_id, stored_hash = result
+        # E6: Compare the entered password's hash against the stored hash using bcrypt.checkpw
         if bcrypt.checkpw(password.encode(), stored_hash.encode()):
             return user_id
         return None
         
 
 
+# F1/F2: Main entry point — starts with a Login Page built entirely with Tkinter
 def main():
 
     root = tk.Tk()
@@ -931,6 +976,7 @@ def main():
         if user_id is not None:
             open_home_page(user_id)
         else:
+            # E7: Return error "Invalid Username or Password" if username doesn't exist or password doesn't match
             messagebox.showerror("Error", "Invalid Username or Password")
 
 
