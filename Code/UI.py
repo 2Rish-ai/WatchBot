@@ -309,7 +309,7 @@ class Account_Page():
 
 
         delete_account_window.protocol("WM_DELETE_WINDOW", on_close)
-        Delete_Acccount(delete_account_window,self.root,self.master,self.user_id)
+        Delete_Account(delete_account_window,self.root,self.master,self.user_id)
 
     def back(self):
         self.previous_window.deiconify()
@@ -431,7 +431,7 @@ class Change_password():
         self.master.destroy()
 
 # E9: Allow users to delete their account — cascades deletion across detection_history, embedding_table, and login_details
-class Delete_Acccount():
+class Delete_Account():
     def __init__(self,master,root,previous_window,user_id):
         self.master = master
         self.previous_window = previous_window
